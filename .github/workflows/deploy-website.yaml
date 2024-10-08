@@ -1,0 +1,37 @@
+name: Deploy Website
+
+on:
+  push:
+    branches:
+      - main  # Adjust the branch name as needed
+  pull_request:
+    branches:
+      - main  # Adjust to target branches where PRs are merged
+  workflow_dispatch:  # Allows manual triggers from GitHub UI
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy Website to AWS Beta
+        if: ${{ github.event_name == 'pull_request' && (!github.event.pull_request.merged || github.event.pull_request.base.ref != 'main') }}
+        run: |
+          aws s3 cp index.html s3://luit-purple-oct-2024-cicd-beta --acl public-read
+
+      - name: Deploy Website to AWS Prod
+        if: (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        run: |
+          aws s3 cp index.html s3://luit-purple-oct-2024-cicd-prod --acl public-read
+
+      
